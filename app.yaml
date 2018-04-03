@@ -1,0 +1,23 @@
+﻿# gcloud app deploy --project owarai-158703
+
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+
+- url: /(.*\..*)
+  static_files: \1
+  upload: .*\.(txt|jpg|png|gif|woff|woff2|ttf|css|js|svg)
+
+- url: /.*
+  script: gae.app
+
+libraries:
+- name: webapp2
+  version: "2.5.2"
+
+skip_files:
+- .*ffmpeg.*
+- .*\.git.*
+- .*\.idea.*
