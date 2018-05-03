@@ -1,4 +1,5 @@
-﻿# gcloud app deploy --project owarai-158703
+﻿# gcloud app deploy --project owarai-158703 --version 1
+# バージョンは15個以上持てない
 
 runtime: python27
 api_version: 1

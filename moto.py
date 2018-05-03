@@ -1,9 +1,17 @@
 # coding=utf-8
 import os,json,urllib,time,datetime,math,re
-from logging import info
+import webapp2
 from google.appengine.ext.webapp import template,blobstore_handlers,RequestHandler
-from google.appengine.api import app_identity,mail
+from google.appengine.api import app_identity,mail,memcache
 from google.appengine.ext import blobstore,ndb
+
+try:
+	# gae向けのrequests
+	import requests
+	import requests_toolbelt.adapters.appengine
+	requests_toolbelt.adapters.appengine.monkeypatch()
+except:
+	pass
 
 
 class base(ndb.Model):
@@ -12,28 +20,36 @@ class base(ndb.Model):
 	# 時刻
 	bone=ndb.DateTimeProperty(auto_now_add=True)
 	last=ndb.DateTimeProperty(auto_now=True)
+
 	# 分類
-	anal=ndb.StringProperty(default=u"what")
-	# 関係性
-	kslf=ndb.ComputedProperty(lambda s: s.key)
+	cate=ndb.StringProperty(default=u"what")
+
+	# 関係検索用
 	kusr=ndb.KeyProperty()  # 作者
 	kint=ndb.KeyProperty()  # 米等の対象物
 	kner=ndb.KeyProperty(repeated=True)
 	kfar=ndb.KeyProperty(repeated=True)
-	# 基本
-	name=ndb.StringProperty(validator=lambda p,v: v[:100])
-	text=ndb.TextProperty(validator=lambda p,v: v[:200])
+
+	# 文章検索用
+	name=ndb.StringProperty()
+	text=ndb.TextProperty()
 	mail=ndb.StringProperty()
 	word=ndb.StringProperty()
-	attr=ndb.StringProperty(repeated=True)
+	tags=ndb.StringProperty(repeated=True)
+
+	# 整列用
+	int0=ndb.IntegerProperty()
+	int1=ndb.IntegerProperty()
+	int2=ndb.IntegerProperty()
+	intA=ndb.IntegerProperty()
+	intB=ndb.IntegerProperty()
+	intC=ndb.IntegerProperty()
+
+	# ファイル
 	blob=ndb.BlobKeyProperty(repeated=True)
-	icon=ndb.TextProperty()  # サムネイル
-	head=ndb.TextProperty()
-	view=ndb.IntegerProperty()
-	coin=ndb.IntegerProperty()
-	size=ndb.IntegerProperty()  # ファイルの数
-	tpos=ndb.FloatProperty()
-	tlen=ndb.FloatProperty()
+
+	# JSON
+	json=ndb.JsonProperty()
 
 	@classmethod
 	def getbyid(c,i,m=True):
@@ -51,7 +67,6 @@ class base(ndb.Model):
 
 
 # https://cloud.google.com/appengine/docs/standard/python/blobstore/
-#
 class blobhandler(RequestHandler):
 	def get(s,blob):
 		s.response.headers.add_header('X-AppEngine-BlobKey',blob)
@@ -61,9 +76,11 @@ class blobhandler(RequestHandler):
 			r1=int(r[1]) if len(r)>=2 else r0+1048576
 			s.response.headers.add_header('X-AppEngine-BlobRange',"bytes={0}-{1}".format(r0,r1))
 
+
 class datainput:
 	def __init__(s,handler):
 		s.h=handler
+
 	def __getattr__(s,k):
 		r=vars(s)["h"].request
 		if k=="hosturl":
@@ -71,16 +88,32 @@ class datainput:
 		if k=="path":
 			return r.path
 		return r.get(k)
+
 	def body(s):
 		return s.h.request.body
+
 	def json(s):
 		return json.loads(s.h.request.body)
+
 	def file(s):
 		return [i.key() for i in s.h.get_uploads()]
+
+
 class dataoutput():
 	def __getattr__(s,k):
 		pass
+
 class workhandler(blobstore_handlers.BlobstoreUploadHandler,RequestHandler):
+	@classmethod
+	def getapp(cls):
+		return webapp2.WSGIApplication([('/.*',cls)])
+
+	def mset(s,v):
+		memcache.set("memcache",v)
+
+	def mget(s):
+		return memcache.get("memcache")
+
 	def cget(s,k):
 		return s.request.cookies.get(k,'')
 
@@ -108,35 +141,40 @@ class workhandler(blobstore_handlers.BlobstoreUploadHandler,RequestHandler):
 		#　メモリリーク対策
 		context=ndb.get_context()
 		context.clear_cache()
-		context.set_cache_policy(lambda key: False)
-		context.set_memcache_policy(lambda key: False)
+		context.set_cache_policy(lambda key:False)
+		context.set_memcache_policy(lambda key:False)
 		# 入力
 		s.i=datainput(s)
 		if any(not i.size for i in s.get_uploads()):
 			blobstore.delete(i.key() for i in s.get_uploads())
 		# 処理
-		s.o=dataoutput()
-		s.work(s.i,s.o)
-		# 出力
-		if s.o.redirect:
-			s.redirect(str(s.o.redirect))
-		if s.o.template=="json":
-			def jsondefault(o):
-				if isinstance(o,ndb.Model):
-					r=o.to_dict()
-					r["key"]=o.key
-					return r
-				if isinstance(o,ndb.Key):
-					return {"id": o.id(),"kind": o.kind(),"urlsafe": o.urlsafe()}
-				if isinstance(o,blobstore.BlobKey):
-					return str(o)
-				return None
+		s.work(s.i)
 
-			s.response.out.write(json.dumps(vars(s.o),default=jsondefault,indent=4))
-		elif s.o.template:
-			tmp=os.path.join(os.path.dirname(__file__),s.o.template)
-			if os.path.exists(tmp):
-				s.response.out.write(template.render(tmp,vars(s.o)))
+	def write_json(self,data):
+		def jsondefault(o):
+			if isinstance(o,ndb.Model):
+				r=o.to_dict()
+				r["key"]=o.key
+				return r
+			if isinstance(o,ndb.Key):
+				return {"id":o.id(),"kind":o.kind(),"urlsafe":o.urlsafe()}
+			if isinstance(o,blobstore.BlobKey):
+				return str(o)
+			return None
+
+		self.response.out.write(json.dumps(data,default=jsondefault,indent=4))
+
+	def write_temp(self,temp,data):
+		tmp=os.path.join(os.path.dirname(__file__),temp)
+		if os.path.exists(tmp):
+			if hasattr(data,"__dict__"):
+				data=vars(data)
+			data["path"]=self.request.path
+			data["hosturl"]=self.request.host_url
+			self.response.out.write(template.render(tmp,data))
+
+	def write(self,text):
+		self.response.out.write(text)
 
 	def sendmail(data):
 		data["sender"]=u"anything@{0}.appspotmail.com".format(app_identity.get_application_id())

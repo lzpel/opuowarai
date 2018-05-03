@@ -1,0 +1,24 @@
+<!DOCTYPE html><html>
+<body>
+<form action="/set">
+	<input name="iden" type="text" value="{{main.key.id}}">
+	<p>name</p>
+	<input name="name" type="text" value="{{main.name}}">
+	<p>coin</p>
+	<input name="int0" type="number" value="{{main.int0|default:"0"}}">
+	<p>univ</p>
+	<input name="univ" type="text" value="{{main.json.univ}}">
+	<p>head</p>
+	<input name="embed" type="text" value="{{main.json.embed}}">
+	<p>order</p>
+	<button name="order" value="set">set</button>
+	<button name="order" value="del">del</button>
+</form>
+{%for i in univ%}
+<a href="/admn?iden={{i.key.id}}">name {{i.name}}</a>
+<p>vote {{i.int0}}</p>
+<p>univ {{i.json.univ}}</p>
+<p>embed {{i.json.embed}}</p>
+{%endfor%}
+</body>
+</html>
