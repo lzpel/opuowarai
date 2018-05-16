@@ -8,11 +8,14 @@ class work(moto.workhandler):
 			data["vote"]=s.cget("vote")
 			s.write_temp("home.html",data)
 		if i.path=="/rank":
-			data["univ"]=moto.base.query(moto.base.cate=="univ").order(+moto.base.int0).fetch()
-			if s.cget("vote"):
-				data["main"]=moto.base.getbyid(s.cget("vote"))
-			random.shuffle(data["univ"])
-			s.write_temp("rank.html",data)
+			if False:
+				data["univ"]=moto.base.query(moto.base.cate=="univ").order(+moto.base.int0).fetch()
+				if s.cget("vote"):
+					data["main"]=moto.base.getbyid(s.cget("vote"))
+				random.shuffle(data["univ"])
+				s.write_temp("rank.html",data)
+			else :
+				s.redirect("/")
 		if i.path=="/admn":
 			if s.i.iden:
 				data["main"]=moto.base.getbyid(s.i.iden)
@@ -30,7 +33,7 @@ class work(moto.workhandler):
 				main.put()
 			time.sleep(1)
 			s.redirect("/admn")
-		if i.path=="/vote":
+		if i.path=="/vote" and False:
 			main=moto.base.getbyid(s.i.iden)
 			main.int0+=1
 			main.put()
