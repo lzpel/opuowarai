@@ -16,5 +16,9 @@
 runtime: python310 # or another supported version
 
 handlers:
+
+- url: /(.*\..*)
+  static_files: \1
+  upload: .*\.(txt|jpg|png|gif|woff|woff2|ttf|css|js|svg)
 - url: /.*
   script: auto
