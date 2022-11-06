@@ -1,24 +1,20 @@
-﻿# gcloud app deploy --project owarai-158703 --version 1
-# バージョンは15個以上持てない
+﻿
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-runtime: python27
-api_version: 1
-threadsafe: yes
+runtime: python310 # or another supported version
 
 handlers:
-
-- url: /(.*\..*)
-  static_files: \1
-  upload: .*\.(txt|jpg|png|gif|woff|woff2|ttf|css|js|svg)
-
 - url: /.*
-  script: gae.app
-
-libraries:
-- name: webapp2
-  version: "2.5.2"
-
-skip_files:
-- .*ffmpeg.*
-- .*\.git.*
-- .*\.idea.*
+  script: auto
